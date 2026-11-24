@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中華大學驗收紀錄單系統</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* =========================================================================
+           v7.1（2026-11-24）：日期欄位下方加註民國年；免保固保證金時保證金金額送出 0
+           v7（2026-11-24）：依 Final 設計稿改版
+           淺色基底＋三態分段按鈕＋送出進度視窗；不設預設選項；表頭表尾皆有操作按鈕
+           ========================================================================= */
+        :root {
+            --text: #111827; --text-2: #374151; --muted: #6B7280;
+            --line: #E5E7EB; --line-2: #EEF0F2; --input: #8A8F98; --soft: #F7F8FA; --track: #F2F4F7;
+            --mint: #3EB489; --mint-d: #1F7A5A; --mint-bg: #ECF8F2; --mint-line: #BFE8D6;
+            --ok: #047857; --ok-bg: #ECFDF5; --ok-line: #10B981;
+            --red: #B42318; --red-bg: #FEF3F2;
+            --amber: #B54708; --amber-bar: #F59E0B; --amber-bg: #FFF7ED; --amber-line: #FCD9B6;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #FFFFFF; color: var(--text); font-family: Inter, 'Noto Sans TC', system-ui, sans-serif; font-size: 14px; }
+        .wrap { max-width: 960px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+        .hidden { display: none !important; }
+
+        /* 頁首 */
+        header.top { border-bottom: 1px solid var(--line); background: #FFFFFF; }
+        .top-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding-top: 16px; padding-bottom: 16px; }
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .brand-mark { width: 36px; height: 36px; border-radius: 8px; background: var(--text); color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; }
+        .brand-title { font-size: 18px; font-weight: 600; }
+        .brand-sub { font-size: 12px; color: var(--muted); }
+        .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+        .badge-serial { font-size: 13px; color: var(--mint-d); background: var(--mint-bg); border: 1px solid var(--mint-line); padding: 6px 10px; border-radius: 999px; }
+        .tabs { display: flex; gap: 28px; }
+        .tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 0 12px; font: inherit; font-size: 14px; font-weight: 500; color: var(--muted); cursor: pointer; }
+        .tab.active { color: var(--text); border-bottom-color: var(--text); }
+        .tab:disabled { cursor: not-allowed; opacity: .55; }
+
+        /* 按鈕 */
+        .btn { height: 40px; padding: 0 16px; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--input); background: #FFFFFF; color: var(--text); }
+        .btn-primary { border-color: var(--text); background: var(--text); color: #FFFFFF; }
+        .btn-mint { border-color: var(--mint); background: var(--mint-bg); color: var(--mint-d); }
+        .btn:disabled { opacity: .6; cursor: wait; }
+        .btn:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+
+        /* 卡片與欄位 */
+        main { display: flex; flex-direction: column; gap: 24px; padding-top: 28px; padding-bottom: 24px; }
+        .card { background: #FFFFFF; border: 1px solid var(--line); border-radius: 10px; padding: 24px 28px; display: flex; flex-direction: column; gap: 20px; }
+        .sec { font-size: 15px; font-weight: 600; margin: 0; }
+        .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px 20px; }
+        .lbl { display: block; font-size: 13px; font-weight: 500; color: #1F2937; margin-bottom: 6px; }
+        .req { color: var(--red); }
+        .hint { font-size: 12px; color: var(--muted); font-weight: 400; }
+        .inp { width: 100%; height: 40px; border: 1px solid var(--input); border-radius: 8px; padding: 0 12px; font: inherit; font-size: 14px; color: var(--text); background: #FFFFFF; outline: none; }
+        .inp:focus { border-color: var(--mint); outline: 3px solid rgba(62,180,137,.22); }
+        .inp:disabled { background: #F3F4F6; color: var(--muted); cursor: not-allowed; }
+        textarea.inp { height: auto; min-height: 80px; padding: 10px 12px; resize: vertical; }
+        .row-q { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+        .divider { border-top: 1px solid var(--line); }
+        .roc-hint { display: block; min-height: 18px; margin-top: 4px; font-size: 12px; color: var(--mint-d); }
+
+        /* 自動帶入標示 */
+        .autofilled { box-shadow: inset 3px 0 0 var(--mint); }
+        .autofilled-modified { box-shadow: inset 3px 0 0 var(--amber-bar); }
+        .track.autofilled { box-shadow: 0 0 0 2px var(--mint); }
+        .track.autofilled-modified { box-shadow: 0 0 0 2px var(--amber-bar); }
+
+        /* 錯誤標示 */
+        .is-error { border-color: var(--red) !important; background-color: var(--red-bg) !important; }
+        .track.is-error { box-shadow: 0 0 0 2px var(--red) !important; }
+
+        /* 三態分段按鈕 */
+        .track { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: var(--track); border: 1px solid var(--line); border-radius: 999px; }
+        .track.block { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); border-radius: 14px; width: 100%; }
+        .seg { position: relative; display: inline-flex; }
+        .seg > input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+        .seg > span { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 16px; border-radius: 999px; font-size: 14px; font-weight: 500; color: #4B5563; cursor: pointer; user-select: none; transition: background .15s, box-shadow .15s; }
+        .seg > input:checked + span { background: #FFFFFF; color: var(--text); box-shadow: 0 0 0 1.5px var(--text); }
+        .seg[data-tone="ok"] > input:checked + span { background: var(--ok-bg); color: var(--ok); box-shadow: 0 0 0 1px var(--ok-line); }
+        .seg[data-tone="ng"] > input:checked + span { background: var(--red-bg); color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+        .seg[data-tone="na"] > input:checked + span { background: #FFFFFF; color: var(--text-2); box-shadow: 0 0 0 1px var(--input); }
+        .seg > input:focus-visible + span { outline: 2px solid var(--mint); outline-offset: 2px; }
+        .seg > input:disabled + span { cursor: not-allowed; }
+        .seg.seg-lg { display: flex; }
+        .seg.seg-lg > span { width: 100%; justify-content: flex-start; gap: 12px; padding: 14px 18px; border-radius: 12px; }
+        .seg-text { display: flex; flex-direction: column; gap: 4px; text-align: left; }
+        .seg-text b { font-size: 15px; font-weight: 600; }
+        .seg-text small { font-size: 12px; font-weight: 400; color: var(--muted); }
+        .seg.seg-sm > span { min-height: 34px; padding: 4px 12px; }
+
+        /* 查詢帶入 */
+        .lookup { position: relative; background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+        .lookup-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+        .legend i { display: inline-block; width: 3px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+        .field-btn { display: flex; gap: 8px; }
+        .field-btn .inp { flex: 1; min-width: 0; }
+        .lk-panel { position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 30; background: #FFFFFF; border: 1px solid var(--mint); border-radius: 10px; box-shadow: 0 16px 40px rgba(17,24,39,.12); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        .lk-table { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+        .lk-grid { display: grid; grid-template-columns: 1.3fr 1fr 1.8fr 1fr 1fr; gap: 8px; min-width: 600px; }
+        .lk-th { padding: 8px 12px; background: var(--soft); font-size: 12px; color: var(--muted); }
+        .lk-row { width: 100%; padding: 10px 12px; border: 0; border-top: 1px solid var(--line-2); background: #FFFFFF; font: inherit; font-size: 13px; color: var(--text); text-align: left; cursor: pointer; }
+        .lk-row.sel { background: var(--mint-bg); box-shadow: inset 3px 0 0 var(--mint); }
+        .lk-msg { font-size: 13px; color: var(--amber); background: var(--amber-bg); border: 1px solid var(--amber-line); border-radius: 8px; padding: 10px 12px; }
+
+        /* 儀器設備檢測表 */
+        .info-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px 20px; background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; font-size: 13px; }
+        .info-strip span.k { color: var(--muted); }
+        .eq-table { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+        .eq-grid { display: grid; grid-template-columns: 64px 1.4fr 1.2fr 170px 48px; gap: 10px; align-items: center; padding: 10px 14px; min-width: 700px; }
+        .eq-head { background: var(--soft); font-size: 12px; color: var(--muted); }
+        .eq-row { border-top: 1px solid var(--line-2); }
+        .icon-btn { height: 40px; border: 1px solid var(--line); background: #FFFFFF; border-radius: 8px; color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        /* 表尾操作列 */
+        .foot { border-top: 1px solid var(--line); padding-top: 20px; padding-bottom: 48px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+
+        /* 提示與視窗 */
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 60; background: var(--text); color: #FFFFFF; font-size: 14px; padding: 12px 18px; border-radius: 10px; box-shadow: 0 12px 32px rgba(17,24,39,.18); display: flex; align-items: center; gap: 10px; }
+        .toast::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--mint); }
+        .overlay { position: fixed; inset: 0; z-index: 70; background: rgba(17,24,39,.35); display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .dialog { width: 100%; max-width: 460px; background: #FFFFFF; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 24px 60px rgba(17,24,39,.20); padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; }
+        .dialog h3 { margin: 0; font-size: 16px; font-weight: 600; }
+        .msg-list { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
+        .msg-list p { margin: 0; font-size: 13px; color: var(--text-2); line-height: 1.5; padding-left: 12px; border-left: 2px solid var(--red); }
+        .dialog.ok .msg-list p { border-left-color: var(--mint); }
+        .steps { display: flex; flex-direction: column; gap: 14px; }
+        .step { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--muted); }
+        .step .ic { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #C9CED6; flex: none; display: flex; align-items: center; justify-content: center; }
+        .step.active { color: var(--mint-d); }
+        .step.active .ic { border-color: var(--line-2); border-top-color: var(--mint); animation: spin .9s linear infinite; }
+        .step.done { color: var(--text); }
+        .step.done .ic { border: 0; background: var(--mint-bg); color: var(--mint-d); }
+        .seal-info { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; background: var(--soft); border: 1px solid var(--line); border-radius: 10px; font-size: 13px; color: var(--text-2); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 640px) { .card { padding: 20px 18px; } .wrap { padding-left: 16px; padding-right: 16px; } }
+    </style>
+</head>
+<body>
+
+    <!-- 頁首 -->
+    <header class="top">
+        <div class="wrap top-row">
+            <div class="brand">
+                <div class="brand-mark">驗</div>
+                <div>
+                    <div class="brand-title">驗收紀錄單</div>
+                    <div class="brand-sub">中華大學 驗收紀錄平台</div>
+                </div>
+            </div>
+            <div class="actions">
+                <span id="header-serial-badge" class="badge-serial hidden">流水號 <span id="display-serial-no"></span></span>
+                <button type="button" class="btn btn-mint js-download hidden" onclick="downloadSavedPdf()">下載 PDF</button>
+                <button type="button" class="btn js-edit-action js-draft" onclick="saveDraft()">暫存</button>
+                <button type="button" class="btn btn-primary js-edit-action js-upload" onclick="validateAndUpload()">上傳並產生 PDF</button>
+            </div>
+        </div>
+        <div class="wrap tabs">
+            <button id="tab-btn-1" type="button" class="tab active" onclick="switchTab(1)">驗收紀錄單</button>
+            <button id="tab-btn-2" type="button" class="tab" disabled onclick="switchTab(2)">儀器設備功能檢測表</button>
+        </div>
+    </header>
+
+    <div class="wrap">
+    <main>
+
+        <!-- ===================== TAB 1：驗收紀錄單 ===================== -->
+        <div id="tab-1" style="display: flex; flex-direction: column; gap: 24px">
+
+            <!-- 案件設定 -->
+            <section class="card">
+                <h2 class="sec">案件設定</h2>
+                <div class="grid2">
+                    <div>
+                        <span class="lbl">本案有無儀器設備 <span class="req">*</span></span>
+                        <div id="seg_has_equipment" class="track" data-seg="has_equipment" data-options="有|無" aria-label="本案有無儀器設備"></div>
+                    </div>
+                    <div>
+                        <span class="lbl">本案有無保固 <span class="req">*</span></span>
+                        <div id="seg_has_warranty" class="track" data-seg="has_warranty" data-options="有|無" aria-label="本案有無保固"></div>
+                    </div>
+                    <div>
+                        <span class="lbl">是否為共同供應契約 <span class="req">*</span> <span id="joint_tag" class="hint"></span></span>
+                        <div id="seg_is_joint_supply" class="track" data-seg="is_joint_supply" data-options="是|否" aria-label="是否為共同供應契約"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 基本資料 -->
+            <section class="card">
+                <div class="row-q">
+                    <h2 class="sec">基本資料</h2>
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+                        <span style="font-size: 13px; color: #1F2937">驗收類別 <span class="req">*</span></span>
+                        <div id="seg_accept_category" class="track" data-seg="accept_category" data-options="全部|部分" aria-label="驗收類別"></div>
+                    </div>
+                </div>
+
+                <!-- 查詢帶入 -->
+                <div class="lookup">
+                    <div class="lookup-head">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1F7A5A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="17.5" cy="16.5" r="3"/><path d="m20 19 2 2"/></svg>
+                        <span style="font-size: 13px; font-weight: 600; color: var(--mint-d)">由採購明細查詢帶入</span>
+                        <span class="hint">輸入請購單編號或契約編號後，按「查詢帶入」或 Enter</span>
+                    </div>
+                    <div class="legend">
+                        <span><i style="background: var(--mint)"></i>自動帶入</span>
+                        <span><i style="background: var(--amber-bar)"></i>帶入後手動修改（送出時記錄於資料庫）</span>
+                        <span>帶入欄位皆可修改</span>
+                    </div>
+                    <div class="grid2">
+                        <div>
+                            <label class="lbl" for="po_number">請購單編號 <span class="req">*</span> <span class="hint">11～12 碼，首字大寫 A</span></label>
+                            <div class="field-btn">
+                                <input type="text" id="po_number" class="inp" placeholder="例：A1151106002" maxlength="12">
+                                <button type="button" class="btn btn-mint btn-lookup js-edit-action" onclick="lookupProcurement('po')">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>查詢帶入</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="lbl" for="contract_no">契約編號 <span id="req_contract_no" class="req hidden">*</span> <span class="hint">「#」開頭；金額 ≥ 15 萬且非共同供應契約必填</span></label>
+                            <div class="field-btn">
+                                <input type="text" id="contract_no" class="inp" placeholder="例：#115001">
+                                <button type="button" class="btn btn-mint btn-lookup js-edit-action" onclick="lookupProcurement('contract')">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>查詢帶入</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="lk-panel" class="lk-panel hidden" role="dialog" aria-label="採購明細查詢結果"></div>
+                </div>
+
+                <div class="grid2">
+                    <div><label class="lbl" for="filler_name">填表人 <span class="req">*</span></label><input type="text" id="filler_name" class="inp" placeholder="請輸入填表人姓名"></div>
+                    <div><label class="lbl" for="fill_date">填寫日期 <span class="req">*</span></label><input type="date" id="fill_date" class="inp"></div>
+                    <div><label class="lbl" for="accept_location">驗收地點 <span class="req">*</span></label><input type="text" id="accept_location" class="inp" placeholder="例：圖書館 3 樓"></div>
+                    <div><label class="lbl" for="request_unit">請購單位 <span class="req">*</span></label><input type="text" id="request_unit" class="inp"></div>
+                    <div><label class="lbl" for="contract_amount">契約金額（元） <span class="req">*</span> <span id="amount_text" class="hint"></span></label><input type="text" id="contract_amount" class="inp" inputmode="numeric" placeholder="僅限半形數字" oninput="formatNumberInput(this); checkAmountRules();"></div>
+                    <div><label class="lbl" for="item_name">採購物品名稱 <span class="req">*</span></label><input type="text" id="item_name" class="inp"></div>
+                    <div><label class="lbl" for="vendor_name">服務廠商名稱 <span class="req">*</span></label><input type="text" id="vendor_name" class="inp"></div>
+                    <div><label class="lbl" for="unit_accept_date">單位驗收日期 <span class="req">*</span></label><input type="date" id="unit_accept_date" class="inp"></div>
+                    <div><label class="lbl" for="school_accept_date">校內驗收日期 <span id="req_school_date" class="req hidden">*</span> <span class="hint">金額 ≥ 100 萬必填</span></label><input type="date" id="school_accept_date" class="inp"></div>
+                </div>
+            </section>
+
+            <!-- 履約及單位驗收經過 -->
+            <section class="card">
+                <h2 class="sec">履約及單位驗收經過</h2>
+                <div class="grid2">
+                    <div>
+                        <span class="lbl">履約有無逾期 <span class="req">*</span></span>
+                        <div id="seg_overdue" class="track" data-seg="overdue" data-options="未逾期|逾期" aria-label="履約有無逾期"></div>
+                    </div>
+                    <div><label class="lbl" for="deadline_date">履約期限 <span id="req_deadline" class="req hidden">*</span> <span class="hint">金額 ≥ 15 萬必填</span></label><input type="date" id="deadline_date" class="inp"></div>
+                    <div><label class="lbl" for="complete_date">完成履約日期 <span id="req_complete" class="req hidden">*</span> <span class="hint">金額 ≥ 15 萬必填</span></label><input type="date" id="complete_date" class="inp"></div>
+                </div>
+                <div class="divider"></div>
+                <div style="display: flex; flex-direction: column; gap: 14px">
+                    <div class="row-q">
+                        <span style="font-size: 14px">1. 驗收結果產品規格及數量與規範相符 <span class="req">*</span></span>
+                        <div id="seg_spec_match" class="track" data-seg="spec_match" data-options="相符:ok|不相符:ng" aria-label="產品規格及數量與規範相符"></div>
+                    </div>
+                    <div class="row-q">
+                        <span style="font-size: 14px">2. 功能檢測 <span class="req">*</span></span>
+                        <div id="seg_func_test" class="track" data-seg="func_test" data-options="合格:ok|不合格:ng|無需檢測:na" aria-label="功能檢測"></div>
+                    </div>
+                    <div class="row-q">
+                        <span style="font-size: 14px">3. 所需檢附相關文件 <span class="req">*</span></span>
+                        <div id="seg_doc_attach" class="track" data-seg="doc_attach" data-options="交付:ok|未交付:ng|無:na" aria-label="所需檢附相關文件"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 單位驗收結果 -->
+            <section class="card">
+                <h2 class="sec">單位驗收結果 <span class="req">*</span></h2>
+                <div id="seg_unit_result" class="track block" data-seg="unit_result" data-options="合格:ok:與契約、圖說、貨樣規定相符|不合格:ng:與契約、圖說、貨樣規定不符" aria-label="單位驗收結果"></div>
+                <div id="fail_reason_container" class="hidden">
+                    <label class="lbl" for="fail_reason">不符情形及改善、拆除、重作、退貨、換貨之期限 <span class="hint">選填</span></label>
+                    <textarea id="fail_reason" class="inp" rows="3"></textarea>
+                </div>
+            </section>
+
+            <!-- 保固與保證金 -->
+            <section class="card">
+                <h2 class="sec">保固與保證金</h2>
+                <div class="grid2">
+                    <div>
+                        <label class="lbl" for="warranty_years">自驗收合格日起保固（年） <span id="req_warranty_years" class="req hidden">*</span></label>
+                        <input type="number" id="warranty_years" class="inp" min="0" placeholder="請先選擇本案有無保固" disabled>
+                    </div>
+                    <div>
+                        <span class="lbl">保證金 <span class="req">*</span></span>
+                        <div id="seg_deposit_type" class="track" data-seg="deposit_type" data-options="免保固保證金|有保證金" aria-label="保證金"></div>
+                    </div>
+                    <div>
+                        <label class="lbl" for="deposit_amount">保固保證金新台幣（元）</label>
+                        <input type="number" id="deposit_amount" class="inp" min="1" placeholder="選擇「有保證金」後填寫" disabled>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 校內驗收（契約金額 ≥ 100 萬元時顯示） -->
+            <section id="school_section_container" class="card hidden" style="border-color: var(--mint-line)">
+                <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px">
+                    <h2 class="sec">校內驗收</h2>
+                    <span class="hint">契約金額達新台幣 100 萬元以上，校內驗收日期及結果為必填</span>
+                </div>
+                <div>
+                    <label class="lbl" for="school_pass_reason">校內驗收經過 <span class="hint">選填，建議精簡扼要以維持 A4 單頁</span></label>
+                    <textarea id="school_pass_reason" class="inp" rows="3"></textarea>
+                </div>
+                <div>
+                    <span class="lbl">校內驗收結果 <span class="req">*</span></span>
+                    <div id="seg_school_result" class="track" data-seg="school_result" data-options="合格:ok|不合格:ng" aria-label="校內驗收結果"></div>
+                </div>
+                <div id="school_fail_reason_container" class="hidden">
+                    <label class="lbl" for="school_fail_reason">改善、拆除、重作、退貨、換貨內容及期限 <span class="req">*</span></label>
+                    <textarea id="school_fail_reason" class="inp" rows="2"></textarea>
+                </div>
+            </section>
+        </div>
+
+        <!-- ===================== TAB 2：儀器設備功能檢測表 ===================== -->
+        <div id="tab-2" class="hidden" style="display: flex; flex-direction: column; gap: 24px">
+            <section class="card">
+                <h2 class="sec">儀器設備功能檢測表</h2>
+                <div class="info-strip">
+                    <div><span class="k">請購單位：</span><span id="sync_request_unit"></span></div>
+                    <div><span class="k">請購單編號：</span><span id="sync_po_number"></span></div>
+                    <div><span class="k">採購物品名稱：</span><span id="sync_item_name"></span></div>
+                    <div><span class="k">契約編號：</span><span id="sync_contract_no"></span></div>
+                </div>
+                <div style="max-width: 280px">
+                    <label class="lbl" for="eq_test_date">功能檢測表日期 <span class="req">*</span></label>
+                    <input type="date" id="eq_test_date" class="inp">
+                </div>
+                <div class="eq-table">
+                    <div class="eq-grid eq-head"><span>項次</span><span>內容簡述</span><span>檢測結果</span><span>合格與否</span><span></span></div>
+                    <div id="equipment_tbody"></div>
+                </div>
+                <div><button id="btn-add-row" type="button" class="btn js-edit-action" style="border-style: dashed" onclick="addEquipmentRow()">＋ 新增一列</button></div>
+            </section>
+        </div>
+    </main>
+
+    <!-- 表尾操作列 -->
+    <div class="foot">
+        <span id="foot-note" class="hint">請確認各欄位後送出；送出後表單將鎖定。</span>
+        <div class="actions">
+            <button type="button" class="btn btn-mint js-download hidden" onclick="downloadSavedPdf()">下載 PDF</button>
+            <button type="button" class="btn js-edit-action js-draft" onclick="saveDraft()">暫存</button>
+            <button type="button" class="btn btn-primary js-edit-action js-upload" onclick="validateAndUpload()">上傳並產生 PDF</button>
+        </div>
+    </div>
+    </div>
+
+    <!-- 提示 -->
+    <div id="toast" class="toast hidden" role="status"></div>
+
+    <!-- 訊息視窗 -->
+    <div id="custom-modal" class="overlay hidden">
+        <div id="modal-dialog" class="dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <h3 id="modal-title">訊息</h3>
+            <div id="modal-content" class="msg-list"></div>
+            <div style="display: flex; justify-content: flex-end"><button type="button" class="btn btn-primary" onclick="closeModal()">確認</button></div>
+        </div>
+    </div>
+
+    <!-- 送出進度視窗 -->
+    <div id="seal-modal" class="overlay hidden">
+        <div class="dialog" role="dialog" aria-modal="true" aria-live="polite" aria-labelledby="seal-title">
+            <div>
+                <h3 id="seal-title">資料封存中…</h3>
+                <div id="seal-sub" class="hint" style="margin-top: 4px">請勿關閉視窗，約需 10～15 秒</div>
+            </div>
+            <div class="steps">
+                <div class="step" data-step="1"><span class="ic"></span><span>檢核表單資料</span></div>
+                <div class="step" data-step="2"><span class="ic"></span><span>寫入資料庫並產生 PDF</span></div>
+                <div class="step" data-step="3"><span class="ic"></span><span>完成</span></div>
+            </div>
+            <div id="seal-result" class="hidden" style="display: flex; flex-direction: column; gap: 14px">
+                <div id="seal-info" class="seal-info"></div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px">
+                    <button type="button" class="btn" onclick="closeSeal()">關閉</button>
+                    <button type="button" class="btn btn-primary" onclick="downloadSavedPdf()">下載 PDF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let rowCount = 0;
+        let isLocked = false;
+        let isDraftSaved = false;
+        let savedPdfBase64 = '';
+        let savedPdfFileName = '';
+
+        // =========================================================================
+        // Google Apps Script Web App URL（後端 v6.2）
+        // =========================================================================
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzU7oIF90h6yxfcp5QVWXcDghUaAaF5rdWcfKX3fsKNP3ohc_iSmZXHUBXVByCp4md4/exec";
+
+        // =========================================================================
+        // v7：三態分段按鈕（以原生 radio 實作；所有選項皆不預設）
+        // data-options 格式：值[:色調[:說明]]，以 | 分隔；色調 ok／ng／na，省略為中性
+        // =========================================================================
+        const SEG_ICON = {
+            ok: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
+            ng: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+            na: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>'
+        };
+        const SEG_HANDLERS = {
+            has_equipment: () => updateEquipmentTabState(),
+            has_warranty: () => toggleWarrantyFields(),
+            is_joint_supply: () => { checkAmountRules(); refreshAutofillMark('is_joint_supply'); },
+            unit_result: () => toggleFailReason(),
+            deposit_type: () => toggleDeposit(),
+            school_result: () => toggleSchoolFailReason()
+        };
+
+        function segMarkup(name, value, tone, desc, extraClass) {
+            const icon = SEG_ICON[tone] || '';
+            const inner = desc
+                ? `${icon}<span class="seg-text"><b>${value}</b><small>${desc}</small></span>`
+                : `${icon}${value}`;
+            return `<label class="seg ${extraClass || ''}" data-tone="${tone || 'neutral'}"><input type="radio" name="${name}" value="${value}"><span>${inner}</span></label>`;
+        }
+
+        function renderSegments() {
+            document.querySelectorAll('[data-seg]').forEach(box => {
+                const name = box.dataset.seg;
+                box.setAttribute('role', 'radiogroup');
+                box.innerHTML = box.dataset.options.split('|').map(opt => {
+                    const [value, tone, desc] = opt.split(':');
+                    return segMarkup(name, value, tone, desc, desc ? 'seg-lg' : '');
+                }).join('');
+                box.addEventListener('change', () => {
+                    box.classList.remove('is-error');
+                    if (SEG_HANDLERS[name]) SEG_HANDLERS[name]();
+                });
+            });
+        }
+
+        function getRadio(name) {
+            return document.querySelector(`input[name="${name}"]:checked`)?.value || '';
+        }
+
+        function setRadio(name, value) {
+            document.querySelectorAll(`input[name="${name}"]`).forEach(r => { r.checked = (r.value === value); });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSegments();
+            setupRocHints();
+            addEquipmentRow();
+            setupSyncListeners();
+            setupLookupListeners();
+            updateEquipmentTabState();
+            checkAmountRules();
+        });
+
+        // =========================================================================
+        // v7.1：日期欄位保留原生選擇器，下方加註民國年（送出仍為西元 YYYY-MM-DD）
+        // =========================================================================
+        function toRocText(iso) {
+            const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+            if (!m) return '';
+            const y = parseInt(m[1], 10) - 1911;
+            return y > 0 ? `民國 ${y} 年 ${parseInt(m[2], 10)} 月 ${parseInt(m[3], 10)} 日` : '';
+        }
+
+        function refreshRocHint(input) {
+            const hint = document.getElementById(`${input.id}_roc`);
+            if (hint) hint.textContent = toRocText(input.value);
+        }
+
+        function setupRocHints() {
+            document.querySelectorAll('main input[type="date"]').forEach(input => {
+                const hint = document.createElement('span');
+                hint.id = `${input.id}_roc`;
+                hint.className = 'roc-hint';
+                hint.setAttribute('aria-live', 'polite');
+                input.insertAdjacentElement('afterend', hint);
+                input.addEventListener('input', () => refreshRocHint(input));
+                input.addEventListener('change', () => refreshRocHint(input));
+                refreshRocHint(input);
+            });
+        }
+
+        // 驗證請購單編號：長度 11 或 12、半形英數、首字必須為大寫英文字母 A
+        function isValidPoNumber(poNo) {
+            return /^A[A-Za-z0-9]{10,11}$/.test(poNo);
+        }
+
+        // 控管「儀器設備功能檢測表」頁籤鎖定與解鎖狀態
+        function updateEquipmentTabState() {
+            const hasEq = getRadio('has_equipment');
+            const tabBtn2 = document.getElementById('tab-btn-2');
+            const isTab2Active = !document.getElementById('tab-2').classList.contains('hidden');
+            const canOpenTab2 = isDraftSaved && hasEq === '有';
+
+            tabBtn2.disabled = !canOpenTab2;
+            tabBtn2.title = canOpenTab2 ? '' : '請先選擇「本案有無儀器設備：有」並按「暫存」';
+            if (!canOpenTab2 && isTab2Active) switchTab(1);
+        }
+
+        function switchTab(tabId) {
+            if (tabId === 2) {
+                const hasEq = getRadio('has_equipment');
+                if (hasEq === '無') {
+                    showModal('無法切換頁籤', ['本案已選擇「無儀器設備」，無需填寫「儀器設備功能檢測表」。'], false);
+                    return;
+                }
+                if (!isDraftSaved) {
+                    showModal('操作被拒絕', ['請先填寫「驗收紀錄單」的【基本資料】並點擊「暫存」按鈕，才能切換至「儀器設備功能檢測表」。'], false);
+                    return;
+                }
+                if (hasEq !== '有') {
+                    showModal('操作被拒絕', ['請先於「案件設定」選擇「本案有無儀器設備」為「有」。'], false);
+                    return;
+                }
+            }
+            document.getElementById('tab-1').classList.toggle('hidden', tabId !== 1);
+            document.getElementById('tab-2').classList.toggle('hidden', tabId !== 2);
+            document.getElementById('tab-btn-1').classList.toggle('active', tabId === 1);
+            document.getElementById('tab-btn-2').classList.toggle('active', tabId === 2);
+            if (tabId === 1) updateEquipmentTabState();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function setupSyncListeners() {
+            const syncMap = {
+                'request_unit': 'sync_request_unit',
+                'po_number': 'sync_po_number',
+                'item_name': 'sync_item_name',
+                'contract_no': 'sync_contract_no'
+            };
+            for (const [sourceId, targetId] of Object.entries(syncMap)) {
+                const source = document.getElementById(sourceId);
+                source.addEventListener('input', () => {
+                    document.getElementById(targetId).textContent = source.value;
+                });
+            }
+        }
+
+        function formatNumberInput(input) {
+            input.value = input.value.replace(/\D/g, '');
+        }
+
+        function checkAmountRules() {
+            const amount = parseInt(document.getElementById('contract_amount').value || 0, 10);
+            const isNotJointSupply = getRadio('is_joint_supply') === '否';
+
+            document.getElementById('amount_text').textContent = amount ? `＝ ${amount.toLocaleString('en-US')} 元` : '';
+
+            // >= 1,000,000：校內驗收日期、校內驗收結果必填（校內驗收經過為選填）
+            const reqSchoolDate = document.getElementById('req_school_date');
+            const schoolSection = document.getElementById('school_section_container');
+            if (amount >= 1000000) {
+                reqSchoolDate.classList.remove('hidden');
+                schoolSection.classList.remove('hidden');
+            } else {
+                reqSchoolDate.classList.add('hidden');
+                schoolSection.classList.add('hidden');
+                document.getElementById('school_pass_reason').value = '';
+                setRadio('school_result', '');
+                document.getElementById('school_fail_reason').value = '';
+                document.getElementById('school_fail_reason_container').classList.add('hidden');
+            }
+
+            // >= 150,000 且非共同供應契約：契約編號必填
+            document.getElementById('req_contract_no').classList.toggle('hidden', !(amount >= 150000 && isNotJointSupply));
+
+            // >= 150,000：履約期限、完成履約日期必填
+            document.getElementById('req_deadline').classList.toggle('hidden', !(amount >= 150000));
+            document.getElementById('req_complete').classList.toggle('hidden', !(amount >= 150000));
+        }
+
+        function toggleFailReason() {
+            const container = document.getElementById('fail_reason_container');
+            if (getRadio('unit_result') === '不合格') {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+                document.getElementById('fail_reason').value = '';
+            }
+        }
+
+        function toggleSchoolFailReason() {
+            const container = document.getElementById('school_fail_reason_container');
+            if (getRadio('school_result') === '不合格') {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+                document.getElementById('school_fail_reason').value = '';
+            }
+        }
+
+        function toggleWarrantyFields() {
+            const yearsInput = document.getElementById('warranty_years');
+            const reqStar = document.getElementById('req_warranty_years');
+            if (getRadio('has_warranty') === '有') {
+                yearsInput.disabled = false;
+                yearsInput.placeholder = '例：1';
+                reqStar.classList.remove('hidden');
+            } else {
+                yearsInput.disabled = true;
+                yearsInput.value = '';
+                yearsInput.placeholder = '本案無保固';
+                reqStar.classList.add('hidden');
+            }
+        }
+
+        function toggleDeposit() {
+            const depositInput = document.getElementById('deposit_amount');
+            if (getRadio('deposit_type') === '有保證金') {
+                depositInput.disabled = false;
+                depositInput.placeholder = '請輸入金額';
+            } else {
+                depositInput.disabled = true;
+                depositInput.value = '';
+                depositInput.placeholder = '選擇「有保證金」後填寫';
+            }
+        }
+
+        function addEquipmentRow() {
+            if (isLocked) return;
+            rowCount++;
+            const tbody = document.getElementById('equipment_tbody');
+            const row = document.createElement('div');
+            row.id = `eq_row_${rowCount}`;
+            row.className = 'eq-grid eq-row';
+            row.innerHTML = `
+                <input type="text" class="inp eq-no" aria-label="項次" value="${rowCount}" style="text-align: center; padding: 0 6px">
+                <input type="text" class="inp eq-desc" aria-label="內容簡述">
+                <input type="text" class="inp eq-result" aria-label="檢測結果">
+                <div class="track" role="radiogroup" aria-label="合格與否" style="padding: 3px">
+                    ${segMarkup(`eq_pass_${rowCount}`, '是', 'ok', '', 'seg-sm')}
+                    ${segMarkup(`eq_pass_${rowCount}`, '否', 'ng', '', 'seg-sm')}
+                </div>
+                <button type="button" class="icon-btn js-edit-action" aria-label="刪除此列" onclick="removeEquipmentRow(${rowCount})">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+                </button>`;
+            tbody.appendChild(row);
+        }
+
+        function removeEquipmentRow(id) {
+            if (isLocked) return;
+            const row = document.getElementById(`eq_row_${id}`);
+            if (row) row.remove();
+        }
+
+        // =========================================================================
+        // 訊息視窗與提示
+        // =========================================================================
+        function escapeHtml(str) {
+            return String(str ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        }
+
+        function showModal(title, messages, isSuccess = false) {
+            const dialog = document.getElementById('modal-dialog');
+            const titleEl = document.getElementById('modal-title');
+            dialog.classList.toggle('ok', isSuccess);
+            titleEl.textContent = title;
+            titleEl.style.color = isSuccess ? 'var(--mint-d)' : 'var(--red)';
+            document.getElementById('modal-content').innerHTML = messages.map(m => `<p>${m}</p>`).join('');
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
+
+        let toastTimer = null;
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.remove('hidden');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.add('hidden'), 2800);
+        }
+
+        function clearErrors() {
+            document.querySelectorAll('.is-error').forEach(el => el.classList.remove('is-error'));
+        }
+
+        function markError(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('is-error');
+        }
+
+        // =========================================================================
+        // 暫存（解鎖儀器設備功能檢測表）
+        // =========================================================================
+        function saveDraft() {
+            clearErrors();
+            let errors = [];
+
+            if (!getRadio('accept_category')) { errors.push('請選擇「驗收類別」(全部/部分)'); markError('seg_accept_category'); }
+
+            if (!document.getElementById('filler_name').value.trim()) { errors.push('請填寫「填表人」'); markError('filler_name'); }
+            if (!document.getElementById('fill_date').value) { errors.push('請填寫「填寫日期」'); markError('fill_date'); }
+            if (!document.getElementById('accept_location').value.trim()) { errors.push('請填寫「驗收地點」'); markError('accept_location'); }
+
+            const poNo = document.getElementById('po_number').value.trim();
+            if (!poNo) {
+                errors.push('請填寫「請購單編號」'); markError('po_number');
+            } else if (!isValidPoNumber(poNo)) {
+                errors.push('「請購單編號」格式錯誤：必須為 11~12 個半形英數字，且第一個字為大寫英文字母 A'); markError('po_number');
+            }
+
+            if (!document.getElementById('request_unit').value.trim()) { errors.push('請填寫「請購單位」'); markError('request_unit'); }
+
+            const amtStr = document.getElementById('contract_amount').value;
+            if (!amtStr) { errors.push('請填寫「契約金額」'); markError('contract_amount'); }
+            const amount = parseInt(amtStr || 0, 10);
+
+            const isJointSupplyVal = getRadio('is_joint_supply');
+            if (amount >= 150000 && !isJointSupplyVal) {
+                errors.push('契約金額達 15 萬元以上，請先選擇「是否為共同供應契約」');
+                markError('seg_is_joint_supply');
+            }
+
+            const contractNo = document.getElementById('contract_no').value.trim();
+            if (amount >= 150000 && isJointSupplyVal === '否' && !contractNo) {
+                errors.push('契約金額達 15 萬元以上且採購方式非共同供應契約，「契約編號」為必填'); markError('contract_no');
+            } else if (contractNo && !/^#[A-Za-z0-9]+$/.test(contractNo)) {
+                errors.push('「契約編號」格式錯誤：必須為半形英數字，且第一個字為 #'); markError('contract_no');
+            }
+
+            if (!document.getElementById('item_name').value.trim()) { errors.push('請填寫「採購物品名稱」'); markError('item_name'); }
+            if (!document.getElementById('vendor_name').value.trim()) { errors.push('請填寫「服務廠商名稱」'); markError('vendor_name'); }
+
+            if (errors.length > 0) {
+                showModal('暫存失敗：基本資料不完整', errors, false);
+            } else {
+                isDraftSaved = true;
+                updateEquipmentTabState();
+                const hasEq = getRadio('has_equipment');
+                const msg = hasEq === '有'
+                    ? '基本資料已暫存，您現在可以切換至「儀器設備功能檢測表」頁籤。'
+                    : '基本資料已暫存（本案未選擇有儀器設備，檢測表維持鎖定，請繼續填寫其餘欄位）。';
+                showModal('暫存成功', [msg], true);
+            }
+        }
+
+        // =========================================================================
+        // 上傳並產生 PDF
+        // v7：「不符情形及期限」「校內驗收經過」改為選填
+        // =========================================================================
+        async function validateAndUpload() {
+            clearErrors();
+            let errors = [];
+            let warnings = [];
+
+            const catVal = getRadio('accept_category');
+            if (!catVal) { errors.push('請選擇「驗收類別」'); markError('seg_accept_category'); }
+
+            const hasEq = getRadio('has_equipment');
+            const hasWarranty = getRadio('has_warranty');
+            const isJointSupplyVal = getRadio('is_joint_supply');
+            if (!hasEq) { errors.push('請選擇「本案有無儀器設備」'); markError('seg_has_equipment'); }
+            if (!hasWarranty) { errors.push('請選擇「本案有無保固」'); markError('seg_has_warranty'); }
+            if (!isJointSupplyVal) { errors.push('請選擇「是否為共同供應契約」'); markError('seg_is_joint_supply'); }
+
+            if (!document.getElementById('filler_name').value.trim()) { errors.push('請填寫「填表人」'); markError('filler_name'); }
+            if (!document.getElementById('fill_date').value) { errors.push('請填寫「填寫日期」'); markError('fill_date'); }
+            if (!document.getElementById('accept_location').value.trim()) { errors.push('請填寫「驗收地點」'); markError('accept_location'); }
+
+            const poNo = document.getElementById('po_number').value.trim();
+            if (!poNo) {
+                errors.push('請填寫「請購單編號」'); markError('po_number');
+            } else if (!isValidPoNumber(poNo)) {
+                errors.push('「請購單編號」格式錯誤：必須為 11~12 個半形英數字，且第一個字為大寫英文字母 A'); markError('po_number');
+            }
+
+            if (!document.getElementById('request_unit').value.trim()) { errors.push('請填寫「請購單位」'); markError('request_unit'); }
+
+            const amtStr = document.getElementById('contract_amount').value;
+            if (!amtStr) { errors.push('請填寫「契約金額」'); markError('contract_amount'); }
+            const amount = parseInt(amtStr || 0, 10);
+
+            const contractNo = document.getElementById('contract_no').value.trim();
+            if (amount >= 150000 && isJointSupplyVal === '否' && !contractNo) {
+                errors.push('契約金額達 15 萬元以上且採購方式非共同供應契約，「契約編號」為必填'); markError('contract_no');
+            } else if (contractNo && !/^#[A-Za-z0-9]+$/.test(contractNo)) {
+                errors.push('「契約編號」格式錯誤：必須為半形英數字，且第一個字為 #'); markError('contract_no');
+            }
+
+            if (!document.getElementById('item_name').value.trim()) { errors.push('請填寫「採購物品名稱」'); markError('item_name'); }
+            if (!document.getElementById('vendor_name').value.trim()) { errors.push('請填寫「服務廠商名稱」'); markError('vendor_name'); }
+
+            if (!document.getElementById('unit_accept_date').value) { errors.push('請填寫「單位驗收日期」'); markError('unit_accept_date'); }
+
+            // 契約金額 >= 1,000,000：校內驗收日期、結果必填（校內驗收經過為選填）
+            const schoolResultVal = getRadio('school_result');
+            if (amount >= 1000000) {
+                if (!document.getElementById('school_accept_date').value) {
+                    errors.push('契約金額達 100 萬元以上，「校內驗收日期」為必填'); markError('school_accept_date');
+                }
+                if (!schoolResultVal) {
+                    errors.push('契約金額達 100 萬元以上，「校內驗收結果」為必填'); markError('seg_school_result');
+                } else if (schoolResultVal === '不合格' && !document.getElementById('school_fail_reason').value.trim()) {
+                    errors.push('校內驗收結果選不合格時，必須填寫「改善、拆除、重作、退貨、換貨內容及期限」'); markError('school_fail_reason');
+                }
+            }
+
+            const overdueVal = getRadio('overdue');
+            if (!overdueVal) { errors.push('請選擇「履約有無逾期」'); markError('seg_overdue'); }
+
+            if (amount >= 150000) {
+                if (!document.getElementById('deadline_date').value) { errors.push('契約金額達 15 萬元以上，「履約期限」為必填'); markError('deadline_date'); }
+                if (!document.getElementById('complete_date').value) { errors.push('契約金額達 15 萬元以上，「完成履約日期」為必填'); markError('complete_date'); }
+            }
+
+            const specMatchVal = getRadio('spec_match');
+            const funcTestVal = getRadio('func_test');
+            const docAttachVal = getRadio('doc_attach');
+            if (!specMatchVal) { errors.push('請選擇「1. 產品規格及數量與規範相符」'); markError('seg_spec_match'); }
+            if (!funcTestVal) { errors.push('請選擇「2. 功能檢測」'); markError('seg_func_test'); }
+            if (!docAttachVal) { errors.push('請選擇「3. 所需檢附相關文件」'); markError('seg_doc_attach'); }
+
+            const unitResultVal = getRadio('unit_result');
+            if (!unitResultVal) { errors.push('請選擇「單位驗收結果」'); markError('seg_unit_result'); }
+
+            // 跨欄位日期與邏輯驗證
+            const deadlineVal = document.getElementById('deadline_date').value;
+            const completeVal = document.getElementById('complete_date').value;
+            const unitDateVal = document.getElementById('unit_accept_date').value;
+            const schoolDateVal = document.getElementById('school_accept_date').value;
+
+            const dDeadline = deadlineVal ? new Date(deadlineVal) : null;
+            const dComplete = completeVal ? new Date(completeVal) : null;
+            const dUnit = unitDateVal ? new Date(unitDateVal) : null;
+            const dSchool = schoolDateVal ? new Date(schoolDateVal) : null;
+
+            if (dDeadline && dComplete && dDeadline < dComplete) {
+                warnings.push('提示：履約期限早於完成履約日期，請再確認兩者日期是否無誤。');
+            }
+            if (dUnit && dSchool && dUnit > dSchool) {
+                errors.push('錯誤：單位驗收日期不得晚於校內驗收日期。');
+                markError('unit_accept_date'); markError('school_accept_date');
+            }
+            if (dUnit && dComplete && dUnit < dComplete) {
+                errors.push('錯誤：單位驗收日期不得早於完成履約日期。');
+                markError('unit_accept_date'); markError('complete_date');
+            }
+            if (dSchool && dComplete && dSchool < dComplete) {
+                errors.push('錯誤：校內驗收日期不得早於完成履約日期。');
+                markError('school_accept_date'); markError('complete_date');
+            }
+            if (dComplete && dDeadline && dComplete > dDeadline && overdueVal === '未逾期') {
+                errors.push('錯誤：完成履約日期晚於履約期限，但【履約有無逾期】勾選為「未逾期」。');
+                markError('complete_date'); markError('deadline_date'); markError('seg_overdue');
+            }
+
+            if ((specMatchVal === '不相符' || funcTestVal === '不合格' || docAttachVal === '未交付') && unitResultVal === '合格') {
+                errors.push('錯誤：規格不相符、功能檢測不合格或文件未交付時，【單位驗收結果】不可勾選為「合格」。');
+                markError('seg_unit_result');
+            }
+
+            // 保固與保證金驗證
+            if (hasWarranty === '有' && !document.getElementById('warranty_years').value) {
+                errors.push('選擇有保固時，「保固年限」為必填'); markError('warranty_years');
+            }
+
+            const depositTypeVal = getRadio('deposit_type');
+            if (!depositTypeVal) {
+                errors.push('請選擇「保證金」類型'); markError('seg_deposit_type');
+            } else if (depositTypeVal === '有保證金') {
+                const depAmt = parseInt(document.getElementById('deposit_amount').value || 0, 10);
+                if (depAmt <= 0) {
+                    errors.push('保固保證金金額必須大於 0'); markError('deposit_amount');
+                }
+            }
+
+            // 儀器設備功能檢測表驗證（僅於本案有無儀器設備 = 有時執行）
+            let equipmentData = [];
+            const eqTestDateVal = document.getElementById('eq_test_date').value;
+            if (hasEq === '有') {
+                if (!eqTestDateVal) {
+                    errors.push('本案有儀器設備，請至「儀器設備功能檢測表」填寫【功能檢測表日期】');
+                    markError('eq_test_date');
+                }
+                const rows = document.querySelectorAll('#equipment_tbody .eq-row');
+                if (rows.length === 0) {
+                    errors.push('本案有儀器設備，「儀器設備功能檢測表」至少需輸入一筆檢測資料');
+                } else {
+                    let tableValid = true;
+                    rows.forEach((row) => {
+                        const no = row.querySelector('.eq-no').value.trim();
+                        const desc = row.querySelector('.eq-desc').value.trim();
+                        const result = row.querySelector('.eq-result').value.trim();
+                        const checkedRadio = row.querySelector('input[type="radio"]:checked');
+                        if (!desc || !result || !checkedRadio) {
+                            tableValid = false;
+                        } else {
+                            equipmentData.push({ no: no, desc: desc, result: result, pass: checkedRadio.value });
+                        }
+                    });
+                    if (!tableValid) {
+                        errors.push('「儀器設備功能檢測表」尚有未填寫完整的欄位（內容簡述／檢測結果／合格與否）');
+                    }
+                }
+            }
+
+            if (errors.length > 0) {
+                showModal(`尚有 ${errors.length} 項需處理`, errors, false);
+                return;
+            }
+
+            if (!SCRIPT_URL || !SCRIPT_URL.startsWith("https://script.google.com/macros/s/")) {
+                showModal('系統設定未完成', ['請先於原始碼中將 SCRIPT_URL 設定為有效的 Google Apps Script Web App URL。'], false);
+                return;
+            }
+
+            // 組合送往後端 GAS 的 JSON Payload（欄位與 v6 相同）
+            const payload = {
+                filler_name: document.getElementById('filler_name').value.trim(),
+                fill_date: document.getElementById('fill_date').value,
+                accept_category: catVal,
+                accept_location: document.getElementById('accept_location').value.trim(),
+                po_number: poNo,
+                request_unit: document.getElementById('request_unit').value.trim(),
+                contract_no: contractNo,
+                contract_amount: amtStr,
+                item_name: document.getElementById('item_name').value.trim(),
+                vendor_name: document.getElementById('vendor_name').value.trim(),
+                unit_accept_date: unitDateVal,
+                school_accept_date: schoolDateVal,
+                overdue: overdueVal,
+                deadline_date: deadlineVal,
+                complete_date: completeVal,
+                has_equipment: hasEq,
+                has_warranty: hasWarranty,
+                is_joint_supply: isJointSupplyVal,
+                spec_match: specMatchVal,
+                func_test: funcTestVal,
+                doc_attach: docAttachVal,
+                unit_result: unitResultVal,
+                fail_reason: unitResultVal === '不合格' ? document.getElementById('fail_reason').value.trim() : '',
+                warranty_years: hasWarranty === '有' ? document.getElementById('warranty_years').value : '',
+                deposit_type: depositTypeVal,
+                deposit_amount: depositTypeVal === '有保證金' ? document.getElementById('deposit_amount').value : '0',   // v7.1：免保固保證金寫 0
+                school_pass_reason: amount >= 1000000 ? document.getElementById('school_pass_reason').value.trim() : '',
+                school_result: amount >= 1000000 ? schoolResultVal : '',
+                school_fail_reason: (amount >= 1000000 && schoolResultVal === '不合格') ? document.getElementById('school_fail_reason').value.trim() : '',
+                eq_test_date: hasEq === '有' ? eqTestDateVal : '',
+                equipment_details: equipmentData,
+                data_source: computeDataSource()
+            };
+
+            setUploadBusy(true);
+            openSeal();
+            setSealStep(2);
+
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload),
+                    redirect: 'follow'
+                });
+                const resJson = await response.json();
+
+                if (resJson.result === 'success' && resJson.pdfBase64) {
+                    savedPdfBase64 = resJson.pdfBase64;
+                    savedPdfFileName = resJson.fileName || `驗收紀錄單_${resJson.serialNo}.pdf`;
+
+                    document.getElementById('display-serial-no').textContent = resJson.serialNo;
+                    document.getElementById('header-serial-badge').classList.remove('hidden');
+
+                    lockForms();
+                    downloadSavedPdf();
+
+                    const info = [
+                        `驗收單流水號：<b style="color: var(--text)">${escapeHtml(resJson.serialNo)}</b>`,
+                        `PDF 共 ${escapeHtml(resJson.pageCount || (hasEq === '有' ? 2 : 1))} 頁，已自動開始下載`,
+                        `資料來源記錄為「${escapeHtml(payload.data_source)}」`
+                    ].concat(warnings.map(escapeHtml));
+                    finishSeal(info);
+                } else {
+                    throw new Error(resJson.message || '後端回傳異常');
+                }
+            } catch (err) {
+                closeSeal();
+                setUploadBusy(false);
+                showModal('上傳失敗', [`處理過程發生錯誤：${escapeHtml(err.message)}`, '請確認 GAS 部署權限是否設為「所有人」，以及 SCRIPT_URL 是否正確。'], false);
+            }
+        }
+
+        function setUploadBusy(busy) {
+            document.querySelectorAll('.js-upload').forEach(btn => {
+                btn.disabled = busy;
+                btn.textContent = busy ? '資料寫入與套印 PDF 中…' : '上傳並產生 PDF';
+            });
+        }
+
+        // =========================================================================
+        // v7：送出進度視窗（第 2 步於後端回應後才結束，不額外延遲）
+        // =========================================================================
+        const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+
+        function openSeal() {
+            document.getElementById('seal-title').textContent = '資料封存中…';
+            document.getElementById('seal-sub').textContent = '請勿關閉視窗，約需 10～15 秒';
+            document.getElementById('seal-result').classList.add('hidden');
+            setSealStep(1);
+            document.getElementById('seal-modal').classList.remove('hidden');
+        }
+
+        function setSealStep(step) {
+            document.querySelectorAll('#seal-modal .step').forEach(el => {
+                const n = parseInt(el.dataset.step, 10);
+                const done = n < step || (step === 3 && n === 3);
+                el.classList.toggle('done', done);
+                el.classList.toggle('active', n === step && step !== 3);
+                el.querySelector('.ic').innerHTML = done ? CHECK_SVG : '';
+            });
+        }
+
+        function finishSeal(infoLines) {
+            setSealStep(3);
+            document.getElementById('seal-title').textContent = '資料已封存，PDF 已產生';
+            document.getElementById('seal-sub').textContent = '驗收紀錄已寫入資料庫';
+            document.getElementById('seal-info').innerHTML = infoLines.map(l => `<span>${l}</span>`).join('');
+            document.getElementById('seal-result').classList.remove('hidden');
+        }
+
+        function closeSeal() {
+            document.getElementById('seal-modal').classList.add('hidden');
+        }
+
+        function downloadSavedPdf() {
+            if (!savedPdfBase64) return;
+            const byteCharacters = atob(savedPdfBase64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = savedPdfFileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+        }
+
+        function lockForms() {
+            isLocked = true;
+            document.querySelectorAll('main input, main select, main textarea').forEach(el => el.disabled = true);
+            document.querySelectorAll('.js-edit-action').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.js-download').forEach(el => el.classList.remove('hidden'));
+            document.getElementById('lk-panel').classList.add('hidden');
+            document.getElementById('foot-note').textContent = '本筆驗收紀錄已送出，表單已鎖定。';
+        }
+
+        // =========================================================================
+        // 由「109學年-議價案件」【採購明細】查詢帶入（後端 v6.2 doGet ?action=lookup）
+        // 帶入欄位維持可編輯；綠色色條＝自動帶入、橘色色條＝帶入後手動修改
+        // =========================================================================
+        const LOOKUP_FIELDS = [
+            { id: 'po_number',       key: 'po_number',       label: '請購單編號' },
+            { id: 'request_unit',    key: 'request_unit',    label: '請購單位' },
+            { id: 'contract_no',     key: 'contract_no',     label: '契約編號' },
+            { id: 'contract_amount', key: 'contract_amount', label: '契約金額' },
+            { id: 'item_name',       key: 'item_name',       label: '採購物品名稱' },
+            { id: 'vendor_name',     key: 'vendor_name',     label: '服務廠商名稱' },
+            { id: 'is_joint_supply', key: 'is_joint_supply', label: '是否為共同供應契約', radio: true }
+        ];
+        let autoFillSnapshot = null;
+        let lookupBusy = false;
+        let lookupState = null;   // { type, key, matches, sel }
+
+        function getFieldValue(f) {
+            return f.radio ? getRadio(f.id) : document.getElementById(f.id).value.trim();
+        }
+
+        function setFieldValue(f, v) {
+            if (f.radio) setRadio(f.id, v);
+            else document.getElementById(f.id).value = v;
+        }
+
+        function markTarget(id) {
+            return id === 'is_joint_supply' ? document.getElementById('seg_is_joint_supply') : document.getElementById(id);
+        }
+
+        function setupLookupListeners() {
+            [['po_number', 'po'], ['contract_no', 'contract']].forEach(([id, type]) => {
+                document.getElementById(id).addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter') {
+                        ev.preventDefault();
+                        lookupProcurement(type);
+                    }
+                });
+            });
+            LOOKUP_FIELDS.filter(f => !f.radio).forEach(f => {
+                const el = document.getElementById(f.id);
+                el.addEventListener('input', () => refreshAutofillMark(f.id));
+                el.addEventListener('change', () => refreshAutofillMark(f.id));
+            });
+            document.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Escape') closeLookupPanel();
+            });
+        }
+
+        async function lookupProcurement(type) {
+            if (isLocked || lookupBusy) return;
+
+            const inputId = type === 'po' ? 'po_number' : 'contract_no';
+            const raw = document.getElementById(inputId).value.trim();
+
+            if (type === 'po' && !isValidPoNumber(raw.toUpperCase())) {
+                markError(inputId);
+                showModal('無法查詢', ['請先輸入正確的「請購單編號」（11~12 個半形英數字，首字為 A）。'], false);
+                return;
+            }
+            if (type === 'contract' && !/^[#＃][A-Za-z0-9]{6}$/.test(raw)) {
+                markError(inputId);
+                showModal('無法查詢', ['請先輸入正確的「契約編號」（「#」加 6 個半形英數字，例：#115001）。'], false);
+                return;
+            }
+
+            setLookupBusy(true);
+            try {
+                const url = `${SCRIPT_URL}?action=lookup&type=${type}&key=${encodeURIComponent(raw)}`;
+                const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+                const resJson = await response.json();
+                if (resJson.result !== 'success') throw new Error(resJson.message || '後端回傳異常');
+                lookupState = { type: type, key: resJson.key || raw, matches: resJson.matches || [], sel: 0 };
+                renderLookupPanel();
+            } catch (err) {
+                showModal('查詢失敗', [`查詢過程發生錯誤：${escapeHtml(err.message)}`, '仍可直接手動輸入各欄位。'], false);
+            } finally {
+                setLookupBusy(false);
+            }
+        }
+
+        function setLookupBusy(busy) {
+            lookupBusy = busy;
+            document.querySelectorAll('.btn-lookup').forEach(btn => {
+                btn.disabled = busy;
+                btn.lastChild.textContent = busy ? '查詢中…' : '查詢帶入';
+            });
+        }
+
+        function renderLookupPanel() {
+            const panel = document.getElementById('lk-panel');
+            const L = lookupState;
+            const label = L.type === 'po' ? '請購單編號' : '契約編號';
+            let html = '';
+
+            if (!L.matches.length) {
+                html = `<div style="font-size: 13px; font-weight: 500">${label}查詢</div>
+                    <div class="lk-msg">【採購明細】查無${label}「${escapeHtml(L.key)}」。請確認編號是否正確，或直接手動輸入各欄位。</div>
+                    <div style="display: flex; justify-content: flex-end"><button type="button" class="btn" style="height: 36px" onclick="closeLookupPanel()">關閉</button></div>`;
+            } else {
+                const r0 = L.matches[L.sel];
+                const title = L.type === 'contract'
+                    ? `契約編號 ${escapeHtml(L.key)} 共 ${L.matches.length} 張請購單，請選擇本次驗收之請購單`
+                    : `請購單編號 ${escapeHtml(L.key)} 查詢結果${L.matches.length > 1 ? `（${L.matches.length} 筆，請選擇其一）` : ''}`;
+                const amountNote = r0.contract_amount
+                    ? (r0.contract_no
+                        ? `契約金額將帶入契約 ${escapeHtml(r0.contract_no)} 之議價金額合計 ${Number(r0.contract_amount).toLocaleString('en-US')} 元`
+                        : `契約金額將帶入議價金額 ${Number(r0.contract_amount).toLocaleString('en-US')} 元`)
+                    : '議價金額空白，契約金額請自行填寫';
+                const rows = L.matches.map((m, i) => `
+                    <button type="button" class="lk-row lk-grid ${i === L.sel ? 'sel' : ''}" onclick="selectLookupRow(${i})">
+                        <span style="font-weight: 500">${escapeHtml(m.po_number || '（無請購單編號）')}</span>
+                        <span>${escapeHtml(m.request_unit)}</span>
+                        <span>${escapeHtml(m.item_name)}</span>
+                        <span style="text-align: right">${m.nego_amount ? Number(m.nego_amount).toLocaleString('en-US') : '（空白）'}</span>
+                        <span style="color: var(--muted)">${escapeHtml(m.procure_method || '（空白）')}</span>
+                    </button>`).join('');
+                const warns = (r0.warnings || []).map(w => `<div class="lk-msg">${escapeHtml(w)}</div>`).join('');
+                html = `<div style="font-size: 13px; font-weight: 500">${title}</div>
+                    <div class="lk-table">
+                        <div class="lk-grid lk-th"><span>請購單編號</span><span>請購單位</span><span>採購物品名稱</span><span style="text-align: right">議價金額</span><span>採購方式</span></div>
+                        ${rows}
+                    </div>
+                    ${warns}
+                    <div class="row-q">
+                        <span class="hint">${amountNote}</span>
+                        <div style="display: flex; gap: 8px">
+                            <button type="button" class="btn" style="height: 36px" onclick="closeLookupPanel()">關閉</button>
+                            <button type="button" class="btn btn-primary" style="height: 36px" onclick="applyLookupRecord()">帶入表單</button>
+                        </div>
+                    </div>`;
+            }
+            panel.innerHTML = html;
+            panel.classList.remove('hidden');
+        }
+
+        function selectLookupRow(i) {
+            if (!lookupState) return;
+            lookupState.sel = i;
+            renderLookupPanel();
+        }
+
+        function closeLookupPanel() {
+            document.getElementById('lk-panel').classList.add('hidden');
+            lookupState = null;
+        }
+
+        function applyLookupRecord() {
+            if (!lookupState || !lookupState.matches.length) return;
+            const rec = lookupState.matches[lookupState.sel];
+
+            // 已有內容且將被變更之欄位，先請使用者確認
+            const conflicts = [];
+            LOOKUP_FIELDS.forEach(f => {
+                const cur = getFieldValue(f);
+                const nv = String(rec[f.key] ?? '').trim();
+                if (cur && cur !== nv) conflicts.push(`${f.label}：「${cur}」→「${nv || '（清空）'}」`);
+            });
+            if (conflicts.length && !window.confirm('下列欄位已有內容，將以【採購明細】資料取代：\n\n' + conflicts.join('\n') + '\n\n確定取代？')) {
+                return;
+            }
+
+            autoFillSnapshot = {};
+            const filled = [];
+            const blanks = [];
+            LOOKUP_FIELDS.forEach(f => {
+                const nv = String(rec[f.key] ?? '').trim();
+                setFieldValue(f, nv);
+                autoFillSnapshot[f.id] = nv || null;
+                (nv ? filled : blanks).push(f.label);
+                markTarget(f.id).classList.remove('is-error');
+            });
+
+            // 觸發既有連動：同步檢測表頁籤資訊、依金額更新必填規則與校內驗收區塊
+            ['request_unit', 'po_number', 'item_name', 'contract_no'].forEach(id => {
+                document.getElementById(id).dispatchEvent(new Event('input'));
+            });
+            checkAmountRules();
+            LOOKUP_FIELDS.forEach(f => refreshAutofillMark(f.id));
+            closeLookupPanel();
+
+            showToast(`已帶入 ${filled.length} 個欄位，仍可修改`);
+            if (blanks.length) {
+                showModal('部分欄位未帶入', [`採購明細無資料、請自行填寫：${blanks.join('、')}。`].concat((rec.warnings || []).map(escapeHtml)), false);
+            }
+        }
+
+        function refreshAutofillMark(id) {
+            const el = markTarget(id);
+            const f = LOOKUP_FIELDS.find(x => x.id === id);
+            el.classList.remove('autofilled', 'autofilled-modified');
+            let tag = '';
+            if (autoFillSnapshot && autoFillSnapshot[id] != null) {
+                const same = getFieldValue(f) === autoFillSnapshot[id];
+                el.classList.add(same ? 'autofilled' : 'autofilled-modified');
+                tag = same ? '已自動帶入' : '帶入後已修改';
+            }
+            if (id === 'is_joint_supply') {
+                const t = document.getElementById('joint_tag');
+                t.textContent = tag;
+                t.style.color = tag === '帶入後已修改' ? 'var(--amber)' : 'var(--mint-d)';
+            }
+        }
+
+        // 送出時判定資料來源：手動輸入／自動帶入／帶入後手動修改（列出被修改之欄位）
+        function computeDataSource() {
+            if (!autoFillSnapshot) return '手動輸入';
+            const changed = LOOKUP_FIELDS
+                .filter(f => autoFillSnapshot[f.id] != null && getFieldValue(f) !== autoFillSnapshot[f.id])
+                .map(f => f.label);
+            return changed.length ? `帶入後手動修改（${changed.join('、')}）` : '自動帶入';
+        }
+    </script>
+</body>
+</html>
