@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         /* =========================================================================
+           v7.2（2026-11-25）：帶入資料檢查提示動態強調；全部驗收重複建檔檢核（限複驗）；上傳前一致性確認
            v7.1（2026-11-24）：日期欄位下方加註民國年；免保固保證金時保證金金額送出 0
            v7（2026-11-24）：依 Final 設計稿改版
            淺色基底＋三態分段按鈕＋送出進度視窗；不設預設選項；表頭表尾皆有操作按鈕
@@ -61,6 +62,14 @@
         textarea.inp { height: auto; min-height: 80px; padding: 10px 12px; resize: vertical; }
         .row-q { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
         .divider { border-top: 1px solid var(--line); }
+        /* v7.2：帶入資料檢查提示（柔和脈動 3 次後靜止；減少動態偏好時不播放） */
+        .verify-tip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--amber-bg); border: 1px solid var(--amber-line); color: var(--amber); font-weight: 600; }
+        .verify-tip svg { flex: none; }
+        .verify-tip.pulse { animation: tipPulse 2.4s ease-in-out 3; }
+        .verify-tip.pulse svg { animation: tipNudge 2.4s ease-in-out 3; }
+        @keyframes tipPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); } 50% { box-shadow: 0 0 0 5px rgba(245,158,11,.18); background: #FFEFD5; } }
+        @keyframes tipNudge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+        @media (prefers-reduced-motion: reduce) { .verify-tip.pulse, .verify-tip.pulse svg { animation: none; } }
         .roc-hint { display: block; min-height: 18px; margin-top: 4px; font-size: 12px; color: var(--mint-d); }
 
         /* 自動帶入標示 */
@@ -128,6 +137,8 @@
         .msg-list { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
         .msg-list p { margin: 0; font-size: 13px; color: var(--text-2); line-height: 1.5; padding-left: 12px; border-left: 2px solid var(--red); }
         .dialog.ok .msg-list p { border-left-color: var(--mint); }
+        .confirm-list p { border-left-color: var(--amber-bar); }
+        .confirm-list p.q { border-left: 0; padding-left: 0; font-size: 14px; font-weight: 600; color: var(--text); }
         .steps { display: flex; flex-direction: column; gap: 14px; }
         .step { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--muted); }
         .step .ic { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #C9CED6; flex: none; display: flex; align-items: center; justify-content: center; }
@@ -209,8 +220,8 @@
                     </div>
                     <div class="legend">
                         <span><i style="background: var(--mint)"></i>自動帶入</span>
-                        <span><i style="background: var(--amber-bar)"></i>帶入後手動修改（送出時記錄於資料庫）</span>
-                        <span>帶入欄位皆可修改</span>
+                        <span><i style="background: var(--amber-bar)"></i>帶入欄位皆可修改</span>
+                        <span id="verify-tip" class="verify-tip pulse" role="note"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 20h19L12 3z"/><path d="M12 10v4.5M12 17.5v.01"/></svg>務請依相關文件與實際情況檢查帶入資料</span>
                     </div>
                     <div class="grid2">
                         <div>
@@ -349,7 +360,7 @@
 
     <!-- 表尾操作列 -->
     <div class="foot">
-        <span id="foot-note" class="hint">請確認各欄位後送出；送出後表單將鎖定。</span>
+        <span id="foot-note" class="hint">請確認各欄位與相關資料無誤後送出；送出後表單將鎖定。</span>
         <div class="actions">
             <button type="button" class="btn btn-mint js-download hidden" onclick="downloadSavedPdf()">下載 PDF</button>
             <button type="button" class="btn js-edit-action js-draft" onclick="saveDraft()">暫存</button>
@@ -367,6 +378,18 @@
             <h3 id="modal-title">訊息</h3>
             <div id="modal-content" class="msg-list"></div>
             <div style="display: flex; justify-content: flex-end"><button type="button" class="btn btn-primary" onclick="closeModal()">確認</button></div>
+        </div>
+    </div>
+
+    <!-- v7.2：確認視窗（是／否） -->
+    <div id="confirm-modal" class="overlay hidden" style="z-index: 80">
+        <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+            <h3 id="confirm-title">請確認</h3>
+            <div id="confirm-content" class="msg-list confirm-list"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px">
+                <button type="button" id="confirm-no" class="btn">否</button>
+                <button type="button" id="confirm-yes" class="btn btn-primary">是</button>
+            </div>
         </div>
     </div>
 
@@ -504,7 +527,7 @@
             const canOpenTab2 = isDraftSaved && hasEq === '有';
 
             tabBtn2.disabled = !canOpenTab2;
-            tabBtn2.title = canOpenTab2 ? '' : '請先選擇「本案有無儀器設備：有」並按「暫存」';
+            tabBtn2.title = canOpenTab2 ? '' : '請先選擇「本案有無儀器設備：有」，且完成驗收紀錄單資料輸入並按「暫存」';
             if (!canOpenTab2 && isTab2Active) switchTab(1);
         }
 
@@ -918,7 +941,41 @@
                 return;
             }
 
-            // 組合送往後端 GAS 的 JSON Payload（欄位與 v6 相同）
+            // v7.2：重複建檔檢核——本次為「全部」且同一請購單編號已有「全部」紀錄時，僅限複驗可新增
+            let isReinspection = '';
+            if (catVal === '全部') {
+                setUploadBusy(true, '檢查是否重複建檔中…');
+                let dup;
+                try {
+                    const res = await fetch(`${SCRIPT_URL}?action=checkdup&po=${encodeURIComponent(poNo)}`, { method: 'GET', redirect: 'follow' });
+                    dup = await res.json();
+                    if (dup.result !== 'success') throw new Error(dup.message || '後端回傳異常');
+                } catch (err) {
+                    setUploadBusy(false);
+                    showModal('無法確認是否重複建檔', [`檢查過程發生錯誤：${escapeHtml(err.message)}`, '請稍後再試；本次尚未上傳。'], false);
+                    return;
+                }
+                setUploadBusy(false);
+                if (dup.count > 0) {
+                    const lines = [`請購單編號 ${escapeHtml(poNo)} 已建立「驗收類別：全部」之驗收紀錄：`].concat(dup.records.map(r =>
+                        `流水號 ${escapeHtml(r.serial)}｜填寫日期 ${escapeHtml(toRocText(r.fill_date) || r.fill_date)}｜單位驗收結果：${escapeHtml(r.unit_result || '（空白）')}${r.school_result ? '｜校內驗收結果：' + escapeHtml(r.school_result) : ''}`));
+                    const isRe = await confirmDialog('重複建檔確認', lines, '本次是否為驗收不合格而進行之複驗？', '是，為複驗', '否');
+                    if (!isRe) {
+                        showModal('無法建檔', ['本案驗收紀錄不可重複建檔'], false);
+                        return;
+                    }
+                    isReinspection = '是';
+                }
+            }
+
+            // v7.2：正式上傳前之一致性確認
+            const consistent = await confirmDialog('上傳前確認', [], '本驗收紀錄單填寫資料是否與相關文件與實際情況一致？', '是，確認上傳', '否');
+            if (!consistent) {
+                showToast('已取消上傳');
+                return;
+            }
+
+            // 組合送往後端 GAS 的 JSON Payload（欄位與 v6 相同；v7.2 新增 is_reinspection）
             const payload = {
                 filler_name: document.getElementById('filler_name').value.trim(),
                 fill_date: document.getElementById('fill_date').value,
@@ -951,7 +1008,8 @@
                 school_fail_reason: (amount >= 1000000 && schoolResultVal === '不合格') ? document.getElementById('school_fail_reason').value.trim() : '',
                 eq_test_date: hasEq === '有' ? eqTestDateVal : '',
                 equipment_details: equipmentData,
-                data_source: computeDataSource()
+                data_source: computeDataSource(),
+                is_reinspection: isReinspection   // v7.2：是否為複驗
             };
 
             setUploadBusy(true);
@@ -983,6 +1041,11 @@
                         `資料來源記錄為「${escapeHtml(payload.data_source)}」`
                     ].concat(warnings.map(escapeHtml));
                     finishSeal(info);
+                } else if (resJson.code === 'DUPLICATE') {
+                    closeSeal();
+                    setUploadBusy(false);
+                    showModal('無法建檔', [escapeHtml(resJson.message || '本案驗收紀錄不可重複建檔')], false);
+                    return;
                 } else {
                     throw new Error(resJson.message || '後端回傳異常');
                 }
@@ -993,11 +1056,44 @@
             }
         }
 
-        function setUploadBusy(busy) {
+        function setUploadBusy(busy, text) {
             document.querySelectorAll('.js-upload').forEach(btn => {
                 btn.disabled = busy;
-                btn.textContent = busy ? '資料寫入與套印 PDF 中…' : '上傳並產生 PDF';
+                btn.textContent = busy ? (text || '資料寫入與套印 PDF 中…') : '上傳並產生 PDF';
             });
+        }
+
+        // v7.2：是／否確認視窗，回傳 Promise<boolean>
+        function confirmDialog(title, lines, question, yesText, noText) {
+            return new Promise(resolve => {
+                const modal = document.getElementById('confirm-modal');
+                const yes = document.getElementById('confirm-yes');
+                const no = document.getElementById('confirm-no');
+                document.getElementById('confirm-title').textContent = title;
+                document.getElementById('confirm-content').innerHTML =
+                    lines.map(l => `<p>${l}</p>`).join('') + `<p class="q">${escapeHtml(question)}</p>`;
+                yes.textContent = yesText || '是';
+                no.textContent = noText || '否';
+                const done = (val) => {
+                    modal.classList.add('hidden');
+                    yes.onclick = null;
+                    no.onclick = null;
+                    resolve(val);
+                };
+                yes.onclick = () => done(true);
+                no.onclick = () => done(false);
+                modal.classList.remove('hidden');
+                no.focus();
+            });
+        }
+
+        // v7.2：重新播放帶入資料檢查提示動態
+        function replayVerifyTip() {
+            const tip = document.getElementById('verify-tip');
+            if (!tip) return;
+            tip.classList.remove('pulse');
+            void tip.offsetWidth;
+            tip.classList.add('pulse');
         }
 
         // =========================================================================
@@ -1246,6 +1342,7 @@
             closeLookupPanel();
 
             showToast(`已帶入 ${filled.length} 個欄位，仍可修改`);
+            replayVerifyTip();
             if (blanks.length) {
                 showModal('部分欄位未帶入', [`採購明細無資料、請自行填寫：${blanks.join('、')}。`].concat((rec.warnings || []).map(escapeHtml)), false);
             }
