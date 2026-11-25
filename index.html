@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         /* =========================================================================
+           v7.4（2026-11-26）：共同供應契約備註無契約編號時不擋；比對中顯示「資料檢查中…」；後端（v7.1）同步比對
+           v7.3（2026-11-26）：關閉畫面上的查詢帶入（程式保留，ENABLE_LOOKUP_AUTOFILL 開關）；暫存與上傳時與採購明細交叉比對
            v7.2（2026-11-25）：帶入資料檢查提示動態強調；全部驗收重複建檔檢核（限複驗）；上傳前一致性確認
            v7.1（2026-11-24）：日期欄位下方加註民國年；免保固保證金時保證金金額送出 0
            v7（2026-11-24）：依 Final 設計稿改版
@@ -213,12 +215,17 @@
 
                 <!-- 查詢帶入 -->
                 <div class="lookup">
-                    <div class="lookup-head">
+                    <div class="lookup-head js-crosscheck-ui hidden">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1F7A5A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 12l2 2 4-4"/><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg>
+                        <span style="font-size: 13px; font-weight: 600; color: var(--mint-d)">核實輸入各項資料</span>
+                        <span class="hint">因「上傳」後無法修改，請核實檢示輸入資料後上傳</span>
+                    </div>
+                    <div class="lookup-head js-autofill-ui">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1F7A5A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="17.5" cy="16.5" r="3"/><path d="m20 19 2 2"/></svg>
                         <span style="font-size: 13px; font-weight: 600; color: var(--mint-d)">由採購明細查詢帶入</span>
                         <span class="hint">輸入請購單編號或契約編號後，按「查詢帶入」或 Enter</span>
                     </div>
-                    <div class="legend">
+                    <div class="legend js-autofill-ui">
                         <span><i style="background: var(--mint)"></i>自動帶入</span>
                         <span><i style="background: var(--amber-bar)"></i>帶入欄位皆可修改</span>
                         <span id="verify-tip" class="verify-tip pulse" role="note"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 20h19L12 3z"/><path d="M12 10v4.5M12 17.5v.01"/></svg>務請依相關文件與實際情況檢查帶入資料</span>
@@ -228,7 +235,7 @@
                             <label class="lbl" for="po_number">請購單編號 <span class="req">*</span> <span class="hint">11～12 碼，首字大寫 A</span></label>
                             <div class="field-btn">
                                 <input type="text" id="po_number" class="inp" placeholder="例：A1151106002" maxlength="12">
-                                <button type="button" class="btn btn-mint btn-lookup js-edit-action" onclick="lookupProcurement('po')">
+                                <button type="button" class="btn btn-mint btn-lookup js-edit-action js-autofill-ui" onclick="lookupProcurement('po')">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>查詢帶入</button>
                             </div>
                         </div>
@@ -236,7 +243,7 @@
                             <label class="lbl" for="contract_no">契約編號 <span id="req_contract_no" class="req hidden">*</span> <span class="hint">「#」開頭；金額 ≥ 15 萬且非共同供應契約必填</span></label>
                             <div class="field-btn">
                                 <input type="text" id="contract_no" class="inp" placeholder="例：#115001">
-                                <button type="button" class="btn btn-mint btn-lookup js-edit-action" onclick="lookupProcurement('contract')">
+                                <button type="button" class="btn btn-mint btn-lookup js-edit-action js-autofill-ui" onclick="lookupProcurement('contract')">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>查詢帶入</button>
                             </div>
                         </div>
@@ -425,6 +432,11 @@
         // =========================================================================
         // Google Apps Script Web App URL（後端 v6.2）
         // =========================================================================
+        // v7.3：畫面上的「查詢帶入」功能開關（false＝隱藏；相關程式保留供日後啟用）
+        const ENABLE_LOOKUP_AUTOFILL = false;
+        // v7.3：與採購明細交叉比對不符時的處理：'block'＝不可暫存／上傳；'confirm'＝提示後可選擇繼續
+        const CROSSCHECK_MODE = 'block';
+
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzU7oIF90h6yxfcp5QVWXcDghUaAaF5rdWcfKX3fsKNP3ohc_iSmZXHUBXVByCp4md4/exec";
 
         // =========================================================================
@@ -481,7 +493,8 @@
             setupRocHints();
             addEquipmentRow();
             setupSyncListeners();
-            setupLookupListeners();
+            applyAutofillSwitch();
+            if (ENABLE_LOOKUP_AUTOFILL) setupLookupListeners();
             updateEquipmentTabState();
             checkAmountRules();
         });
@@ -719,7 +732,7 @@
         // =========================================================================
         // 暫存（解鎖儀器設備功能檢測表）
         // =========================================================================
-        function saveDraft() {
+        async function saveDraft() {
             clearErrors();
             let errors = [];
 
@@ -761,6 +774,8 @@
             if (errors.length > 0) {
                 showModal('暫存失敗：基本資料不完整', errors, false);
             } else {
+                // v7.3：與採購明細交叉比對
+                if (!(await runCrossCheck('draft'))) return;
                 isDraftSaved = true;
                 updateEquipmentTabState();
                 const hasEq = getRadio('has_equipment');
@@ -941,10 +956,13 @@
                 return;
             }
 
+            // v7.3：與採購明細交叉比對
+            if (!(await runCrossCheck('upload'))) return;
+
             // v7.2：重複建檔檢核——本次為「全部」且同一請購單編號已有「全部」紀錄時，僅限複驗可新增
             let isReinspection = '';
             if (catVal === '全部') {
-                setUploadBusy(true, '檢查是否重複建檔中…');
+                setUploadBusy(true, '資料檢查中…');
                 let dup;
                 try {
                     const res = await fetch(`${SCRIPT_URL}?action=checkdup&po=${encodeURIComponent(poNo)}`, { method: 'GET', redirect: 'follow' });
@@ -969,7 +987,7 @@
             }
 
             // v7.2：正式上傳前之一致性確認
-            const consistent = await confirmDialog('上傳前確認', [], '本驗收紀錄單填寫資料是否與相關文件與實際情況一致？', '是，確認上傳', '否');
+            const consistent = await confirmDialog('上傳前確認', [], '本表填寫資料是否與相關文件與實際情況一致？', '是，確認上傳', '否');
             if (!consistent) {
                 showToast('已取消上傳');
                 return;
@@ -1009,7 +1027,8 @@
                 eq_test_date: hasEq === '有' ? eqTestDateVal : '',
                 equipment_details: equipmentData,
                 data_source: computeDataSource(),
-                is_reinspection: isReinspection   // v7.2：是否為複驗
+                is_reinspection: isReinspection,   // v7.2：是否為複驗
+                crosscheck_confirmed: crosscheckConfirmed ? '是' : ''   // v7.4
             };
 
             setUploadBusy(true);
@@ -1041,6 +1060,12 @@
                         `資料來源記錄為「${escapeHtml(payload.data_source)}」`
                     ].concat(warnings.map(escapeHtml));
                     finishSeal(info);
+                } else if (resJson.code === 'CROSSCHECK') {
+                    closeSeal();
+                    setUploadBusy(false);
+                    showModal(`與採購明細比對不符（${(resJson.issues || []).length} 項）`,
+                        (resJson.issues || []).concat(resJson.notes || []).map(escapeHtml).concat(['請依相關文件修正後再上傳。']), false);
+                    return;
                 } else if (resJson.code === 'DUPLICATE') {
                     closeSeal();
                     setUploadBusy(false);
@@ -1363,6 +1388,129 @@
                 t.textContent = tag;
                 t.style.color = tag === '帶入後已修改' ? 'var(--amber)' : 'var(--mint-d)';
             }
+        }
+
+        // =========================================================================
+        // v7.3：查詢帶入開關與採購明細交叉比對
+        // =========================================================================
+        function applyAutofillSwitch() {
+            document.querySelectorAll('.js-autofill-ui').forEach(el => el.classList.toggle('hidden', !ENABLE_LOOKUP_AUTOFILL));
+            document.querySelectorAll('.js-crosscheck-ui').forEach(el => el.classList.toggle('hidden', ENABLE_LOOKUP_AUTOFILL));
+        }
+
+        function normText(v) {
+            return String(v ?? '').replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+                .replace(/[\s\u3000]/g, '').toUpperCase();
+        }
+
+        async function fetchLookup(type, key) {
+            const url = `${SCRIPT_URL}?action=lookup&type=${type}&key=${encodeURIComponent(key)}`;
+            const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+            const json = await res.json();
+            if (json.result !== 'success') throw new Error(json.message || '後端回傳異常');
+            return json.matches || [];
+        }
+
+        function fmtAmt(v) {
+            return v === '' || v == null ? '（空白）' : Number(v).toLocaleString('en-US') + ' 元';
+        }
+
+        // 回傳 { issues: [不符項目], notes: [提示] }
+        function compareWithMaster(input, poMatches, ctMatches) {
+            const issues = [], notes = [];
+            const poKey = normText(input.po), ctKey = normText(input.contract);
+            let rec = null;
+
+            if (poMatches.length) {
+                rec = poMatches.find(m => normText(m.contract_no) === ctKey) || poMatches[0];
+                // v7.4：共同供應契約且採購明細備註無契約編號時，不比對契約編號
+                const skipContract = (input.joint === '是' || rec.is_joint_supply === '是') && !rec.contract_no;
+                if (skipContract && ctKey) {
+                    notes.push('本案為共同供應契約，採購明細備註未記載契約編號，契約編號未比對。');
+                }
+                if (!skipContract && normText(rec.contract_no) !== ctKey) {
+                    if (rec.contract_no && !ctKey) {
+                        issues.push(`契約編號：未填寫，採購明細中此請購單之契約編號為 ${escapeHtml(rec.contract_no)}`);
+                    } else if (!rec.contract_no) {
+                        issues.push(`契約編號：輸入 ${escapeHtml(input.contract)}，但採購明細中請購單 ${escapeHtml(input.po)} 的備註沒有契約編號`);
+                    } else {
+                        issues.push(`契約編號：輸入 ${escapeHtml(input.contract)}，採購明細中請購單 ${escapeHtml(input.po)} 之契約編號為 ${escapeHtml(rec.contract_no)}`);
+                    }
+                    if (ctKey && ctMatches && ctMatches.length) {
+                        notes.push(`契約編號 ${escapeHtml(input.contract)} 在採購明細中屬於請購單：${ctMatches.map(m => escapeHtml(m.po_number)).join('、')}，請確認是請購單編號還是契約編號輸入錯誤。`);
+                    }
+                }
+            } else if (ctMatches && ctMatches.length) {
+                rec = ctMatches[0];
+                issues.push(`請購單編號：採購明細查無 ${escapeHtml(input.po)}；契約編號 ${escapeHtml(input.contract)} 之請購單為 ${ctMatches.map(m => escapeHtml(m.po_number)).join('、')}，請確認請購單編號是否輸入錯誤`);
+            } else {
+                issues.push(`請購單編號：採購明細查無 ${escapeHtml(input.po)}` + (ctKey ? `；契約編號 ${escapeHtml(input.contract)} 亦查無資料` : ''));
+                return { issues, notes };
+            }
+
+            if (rec.contract_amount === '' || rec.contract_amount == null) {
+                notes.push('採購明細之議價金額有空白，契約金額未比對。');
+            } else if (Number(input.amount) !== Number(rec.contract_amount)) {
+                const basis = rec.contract_no ? `契約 ${escapeHtml(rec.contract_no)} 議價金額合計` : '議價金額';
+                issues.push(`契約金額：輸入 ${fmtAmt(input.amount)}，採購明細${basis}為 ${fmtAmt(rec.contract_amount)}`);
+            }
+
+            if (normText(input.vendor) !== normText(rec.vendor_name)) {
+                issues.push(`服務廠商名稱：輸入「${escapeHtml(input.vendor)}」，採購明細得標廠商名稱為「${escapeHtml(rec.vendor_name || '（空白）')}」`);
+            }
+            (rec.warnings || []).forEach(w => notes.push(escapeHtml(w)));
+            return { issues, notes };
+        }
+
+        function setCheckBusy(busy) {
+            document.querySelectorAll('.js-draft, .js-upload').forEach(btn => {
+                btn.disabled = busy;
+                if (busy) { btn.dataset.label = btn.textContent; btn.textContent = '資料檢查中…'; }
+                else if (btn.dataset.label) { btn.textContent = btn.dataset.label; }
+            });
+        }
+
+        let crosscheckConfirmed = false;   // v7.4：'confirm' 模式下使用者確認後送出，後端據以放行
+
+        // 交叉比對；通過（或使用者選擇繼續）回傳 true
+        async function runCrossCheck(stage) {
+            crosscheckConfirmed = false;
+            const input = {
+                po: document.getElementById('po_number').value.trim(),
+                contract: document.getElementById('contract_no').value.trim(),
+                amount: document.getElementById('contract_amount').value,
+                vendor: document.getElementById('vendor_name').value.trim(),
+                joint: getRadio('is_joint_supply')
+            };
+            const ctValid = /^[#＃][A-Za-z0-9]{6}$/.test(input.contract);
+
+            setCheckBusy(true);
+            let result;
+            try {
+                const [poMatches, ctMatches] = await Promise.all([
+                    fetchLookup('po', input.po),
+                    ctValid ? fetchLookup('contract', input.contract) : Promise.resolve(null)
+                ]);
+                result = compareWithMaster(input, poMatches, ctMatches);
+            } catch (err) {
+                setCheckBusy(false);
+                showModal('無法與採購明細比對', [`比對過程發生錯誤：${escapeHtml(err.message)}`, '請稍後再試；本次尚未' + (stage === 'draft' ? '暫存。' : '上傳。')], false);
+                return false;
+            }
+            setCheckBusy(false);
+
+            if (!result.issues.length) return true;
+
+            const marks = { '請購單編號': 'po_number', '契約編號': 'contract_no', '契約金額': 'contract_amount', '服務廠商名稱': 'vendor_name' };
+            result.issues.forEach(t => { const k = Object.keys(marks).find(x => t.startsWith(x)); if (k) markError(marks[k]); });
+            const lines = result.issues.concat(result.notes);
+
+            if (CROSSCHECK_MODE === 'confirm') {
+                crosscheckConfirmed = true;
+                return await confirmDialog('與採購明細比對不符', lines, '是否確認輸入資料無誤，仍要繼續？', '確認無誤，繼續', '返回修正');
+            }
+            showModal(`與採購明細比對不符（${result.issues.length} 項）`, lines.concat(['請依相關文件修正後再' + (stage === 'draft' ? '暫存。' : '上傳。')]), false);
+            return false;
         }
 
         // 送出時判定資料來源：手動輸入／自動帶入／帶入後手動修改（列出被修改之欄位）
