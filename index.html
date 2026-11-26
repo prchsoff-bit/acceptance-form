@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         /* =========================================================================
+           v7.6（2026-11-26）：比對訊息依需求修正（搭配後端 v7.3）；比對失敗改為一般性說明；議價金額未填提示於暫存成功及上傳前確認時顯示
+           v7.5（2026-11-26）：資料檢查改用後端 action=verify（不回傳採購明細內容）；重複建檔只顯示是否已有紀錄；搭配後端 v7.2
            v7.4（2026-11-26）：共同供應契約備註無契約編號時不擋；比對中顯示「資料檢查中…」；後端（v7.1）同步比對
            v7.3（2026-11-26）：關閉畫面上的查詢帶入（程式保留，ENABLE_LOOKUP_AUTOFILL 開關）；暫存與上傳時與採購明細交叉比對
            v7.2（2026-11-25）：帶入資料檢查提示動態強調；全部驗收重複建檔檢核（限複驗）；上傳前一致性確認
@@ -782,7 +784,7 @@
                 const msg = hasEq === '有'
                     ? '基本資料已暫存，您現在可以切換至「儀器設備功能檢測表」頁籤。'
                     : '基本資料已暫存（本案未選擇有儀器設備，檢測表維持鎖定，請繼續填寫其餘欄位）。';
-                showModal('暫存成功', [msg], true);
+                showModal('暫存成功', [msg].concat(lastCrossCheckNotes), true);
             }
         }
 
@@ -974,9 +976,9 @@
                     return;
                 }
                 setUploadBusy(false);
-                if (dup.count > 0) {
-                    const lines = [`請購單編號 ${escapeHtml(poNo)} 已建立「驗收類別：全部」之驗收紀錄：`].concat(dup.records.map(r =>
-                        `流水號 ${escapeHtml(r.serial)}｜填寫日期 ${escapeHtml(toRocText(r.fill_date) || r.fill_date)}｜單位驗收結果：${escapeHtml(r.unit_result || '（空白）')}${r.school_result ? '｜校內驗收結果：' + escapeHtml(r.school_result) : ''}`));
+                if (dup.exists) {
+                    // v7.5：只顯示已有紀錄，不顯示既有紀錄之內容
+                    const lines = [`請購單編號 ${escapeHtml(poNo)} 已建立「驗收類別：全部」之驗收紀錄。`];
                     const isRe = await confirmDialog('重複建檔確認', lines, '本次是否為驗收不合格而進行之複驗？', '是，為複驗', '否');
                     if (!isRe) {
                         showModal('無法建檔', ['本案驗收紀錄不可重複建檔'], false);
@@ -987,7 +989,7 @@
             }
 
             // v7.2：正式上傳前之一致性確認
-            const consistent = await confirmDialog('上傳前確認', [], '本表填寫資料是否與相關文件與實際情況一致？', '是，確認上傳', '否');
+            const consistent = await confirmDialog('上傳前確認', lastCrossCheckNotes, '本表填寫資料是否與相關文件與實際情況一致？', '是，確認上傳', '否');
             if (!consistent) {
                 showToast('已取消上傳');
                 return;
@@ -1065,6 +1067,11 @@
                     setUploadBusy(false);
                     showModal(`與採購明細比對不符（${(resJson.issues || []).length} 項）`,
                         (resJson.issues || []).concat(resJson.notes || []).map(escapeHtml).concat(['請依相關文件修正後再上傳。']), false);
+                    return;
+                } else if (resJson.code === 'CC_FAIL') {
+                    closeSeal();
+                    setUploadBusy(false);
+                    showModal('無法與採購明細比對', [escapeHtml(resJson.message), '本次尚未上傳。'], false);
                     return;
                 } else if (resJson.code === 'DUPLICATE') {
                     closeSeal();
@@ -1426,15 +1433,15 @@
                 // v7.4：共同供應契約且採購明細備註無契約編號時，不比對契約編號
                 const skipContract = (input.joint === '是' || rec.is_joint_supply === '是') && !rec.contract_no;
                 if (skipContract && ctKey) {
-                    notes.push('本案為共同供應契約，採購明細備註未記載契約編號，契約編號未比對。');
+                    notes.push('本案為共同供應契約，契約編號未比對。');
                 }
                 if (!skipContract && normText(rec.contract_no) !== ctKey) {
                     if (rec.contract_no && !ctKey) {
-                        issues.push(`契約編號：未填寫，採購明細中此請購單之契約編號為 ${escapeHtml(rec.contract_no)}`);
+                        issues.push(`契約編號：未填寫，採購明細中此請購單之契約編號為 ${escapeHtml(rec.contract_no)}，請依相關文件修正再確認`);
                     } else if (!rec.contract_no) {
-                        issues.push(`契約編號：輸入 ${escapeHtml(input.contract)}，但採購明細中請購單 ${escapeHtml(input.po)} 的備註沒有契約編號`);
+                        issues.push(`契約編號：輸入 ${escapeHtml(input.contract)}，但採購明細中請購單 ${escapeHtml(input.po)} 無契約編號，請依相關文件修正再確認`);
                     } else {
-                        issues.push(`契約編號：輸入 ${escapeHtml(input.contract)}，採購明細中請購單 ${escapeHtml(input.po)} 之契約編號為 ${escapeHtml(rec.contract_no)}`);
+                        issues.push(`契約編號：輸入 ${escapeHtml(input.contract)}，採購明細中請購單 ${escapeHtml(input.po)} 之契約編號為 ${escapeHtml(rec.contract_no)}，請依相關文件修正再確認`);
                     }
                     if (ctKey && ctMatches && ctMatches.length) {
                         notes.push(`契約編號 ${escapeHtml(input.contract)} 在採購明細中屬於請購單：${ctMatches.map(m => escapeHtml(m.po_number)).join('、')}，請確認是請購單編號還是契約編號輸入錯誤。`);
@@ -1470,11 +1477,28 @@
             });
         }
 
+        let lastCrossCheckNotes = [];   // v7.6
         let crosscheckConfirmed = false;   // v7.4：'confirm' 模式下使用者確認後送出，後端據以放行
+
+        // v7.5：後端資料檢查（action=verify）
+        async function fetchVerify(input) {
+            const q = new URLSearchParams({
+                action: 'verify', po: input.po, contract: input.contract,
+                amount: input.amount, vendor: input.vendor, joint: input.joint || ''
+            });
+            const res = await fetch(`${SCRIPT_URL}?${q.toString()}`, { method: 'GET', redirect: 'follow' });
+            const json = await res.json();
+            if (json.result !== 'success') throw new Error(json.message || '後端回傳異常');
+            return {
+                issues: (json.issues || []).map(escapeHtml),
+                notes: (json.notes || []).map(escapeHtml)
+            };
+        }
 
         // 交叉比對；通過（或使用者選擇繼續）回傳 true
         async function runCrossCheck(stage) {
             crosscheckConfirmed = false;
+            lastCrossCheckNotes = [];
             const input = {
                 po: document.getElementById('po_number').value.trim(),
                 contract: document.getElementById('contract_no').value.trim(),
@@ -1487,22 +1511,22 @@
             setCheckBusy(true);
             let result;
             try {
-                const [poMatches, ctMatches] = await Promise.all([
-                    fetchLookup('po', input.po),
-                    ctValid ? fetchLookup('contract', input.contract) : Promise.resolve(null)
-                ]);
-                result = compareWithMaster(input, poMatches, ctMatches);
+                // v7.5：由後端比對，只回傳不符欄位之說明（原 compareWithMaster／fetchLookup 保留供日後啟用查詢帶入時使用）
+                result = await fetchVerify(input);
             } catch (err) {
                 setCheckBusy(false);
-                showModal('無法與採購明細比對', [`比對過程發生錯誤：${escapeHtml(err.message)}`, '請稍後再試；本次尚未' + (stage === 'draft' ? '暫存。' : '上傳。')], false);
+                console.error('[交叉比對失敗]', err);   // v7.6：技術細節僅記錄於瀏覽器主控台與後端執行紀錄
+                showModal('無法與採購明細比對', ['目前無法連線至採購資料，請稍後再試；若持續發生，請洽總務處採購承辦人員。', '本次尚未' + (stage === 'draft' ? '暫存。' : '上傳。')], false);
                 return false;
             }
             setCheckBusy(false);
 
+            lastCrossCheckNotes = result.notes || [];   // v7.6：無不符項目時，附註於後續視窗顯示
             if (!result.issues.length) return true;
 
             const marks = { '請購單編號': 'po_number', '契約編號': 'contract_no', '契約金額': 'contract_amount', '服務廠商名稱': 'vendor_name' };
-            result.issues.forEach(t => { const k = Object.keys(marks).find(x => t.startsWith(x)); if (k) markError(marks[k]); });
+            // v7.6：依訊息「：」前之欄位名稱標示（可含多個欄位，如「請購單編號／契約編號」）
+            result.issues.forEach(t => { const head = String(t).split('：')[0]; Object.keys(marks).forEach(k => { if (head.includes(k)) markError(marks[k]); }); });
             const lines = result.issues.concat(result.notes);
 
             if (CROSSCHECK_MODE === 'confirm') {
